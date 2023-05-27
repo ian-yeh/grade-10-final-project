@@ -22,7 +22,6 @@ YELLOW = (255, 255, 0)
 BLACK = (0, 0, 0)
 GREEN = (0, 100, 0)
 grass = (98, 189, 98)
-playerColour = (255,219,172)
 outline = 0
 
 inPlay = True
