@@ -5,13 +5,14 @@
 # Date: 05/24/2023
 #########################################
 import math
-from random import randint
+from random import randint, choice
 from pygame.locals import QUIT
 
 import pygame, sys
 
 # screen config/pygame set display
 pygame.init()
+clock = pygame.time.Clock()
 WIDTH = 1200
 HEIGHT = 720
 TOP = 0
@@ -47,32 +48,54 @@ class mapObject(gameObject):
         self.colour = colour
         self.radius = radius
 
+class Gun():
+    def __init__(self, x, y, picture):
+        self.x = x
+        self.y = y
+ 
+        self.mouseCoords = pygame.mouse.get_pos()
+        self.xDisplace = self.mouseCoords[0] - self.x
+        self.yDisplace = self.mouseCoords[1] - self.y
+        self.angle = math.radians(math.degrees(math.atan2(self.yDisplace, self.xDisplace)))
+
+        self.load = pygame.image.load(picture)
+        self.image = pygame.transform.scale(self.load,(40, 40))
+        
+
+    def show(self):
+        self.mouseCoords = pygame.mouse.get_pos()
+        self.xDisplace = self.mouseCoords[0] - self.x
+        self.yDisplace = self.mouseCoords[1] - self.y
+        self.angle = math.radians(math.degrees(math.atan2(self.yDisplace, self.xDisplace)))
+
+        self.sprite = pygame.transform.rotate(self.image, -math.degrees(self.angle))
+        display.blit(self.sprite, (self.x, self.y))
+
+class Crosshair():
+    def __init__(self):
+        self.image = pygame.image.load("crosshair.png")
+
+    def show(self):
+        self.mouseCoords = pygame.mouse.get_pos()
+        display.blit(self.image, (self.mouseCoords[0]-20, self.mouseCoords[1]-20))
+
+        
+
 class Bullets():
     def __init__(self, x, y, damage):
         self.x = x
         self.y = y
         self.damage = damage  
-        self.mouseCoords = pygame.mouse.get_pos()
-        self.xDisplace = self.mouseCoords[0] - self.x
-        self.yDisplace = self.mouseCoords[1] - self.y
-        self.angle = math.radians(math.degrees(math.atan2(self.yDisplace, self.xDisplace)))
+
+        self.angle = math.radians(math.degrees(math.atan2(guns[0].yDisplace, guns[0].xDisplace)))
         
-        self.xSpeed = 1.3 * math.cos(self.angle)
-        self.ySpeed = 1.3 * math.sin(self.angle)
+        self.xSpeed = 14 * math.cos(self.angle)
+        self.ySpeed = 14 * math.sin(self.angle)
 
         # load bullet png, rotate to angle of shot
         self.image = pygame.image.load("bullet.png")
-        #self.imageResize = pygame.transform.scale(self.image, (10, 10))
         self.bullet = pygame.transform.rotate(self.image, -math.degrees(self.angle))
         self.rect = self.bullet.get_rect()
-       
-class Entity:
-    def __init__(self, x, y, width, height, colour):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.hp = hp
 
 class Player():
     def __init__(self, x, y):
@@ -84,6 +107,7 @@ class Player():
         self.hp = 400
 
         self.level = 0
+        self.levelProgress = 0
 
         # count bullets
         self.count = 0
@@ -100,12 +124,7 @@ class Player():
         self.yDisplace = self.mouseCoords[1] - self.y
         self.angle = math.degrees(math.atan2(self.yDisplace, self.xDisplace))
 
-        return self.angle
-
-    def showGun(self, gunType):
-        self.sprite = pygame.transform.rotate(self.spriteResize, self.playerRotate()/-2)
-        pass
-        
+        return self.angle 
 
 class Zombie():
     def __init__(self, x, y, hp, level):
@@ -122,23 +141,45 @@ class Zombie():
         self.sprite = pygame.transform.scale(self.image, (120, 120))
         self.rect = self.sprite.get_rect()
 
+        self.reachCheck = False
+        self.checkPointX = choice(range(200, 1000, 2))
+        self.checkPointY = choice(range(100, 600, 2))
+
     def show(self): #draws zombie
+        if self.reachCheck == False:
+            # moves zombie based on position compared to player
+            if self.checkPointX > self.x-scrollX: #player is to right
+                self.x += zombieSpeed
 
-        # moves zombie based on position compared to player
-        if player.x-30 > self.x-scrollX: #player is to right
-            self.x += zombieSpeed
+            if self.checkPointX < self.x-scrollX: # player is to left
+                self.x -= zombieSpeed
 
-        if player.x-30 < self.x-scrollX: # player is to left
-            self.x -= zombieSpeed
+            if self.checkPointY > self.y-scrollY: # player is below zombie
+                self.y += zombieSpeed
 
-        if player.y-30 > self.y-scrollY: # player is below zombie
-            self.y += zombieSpeed
+            if self.checkPointY < self.y-scrollY: # player is above zombie
+                self.y -= zombieSpeed
 
-        if player.y-30 < self.y-scrollY: # player is above zombie
-            self.y -= zombieSpeed
+            if -5 <= (self.x-self.checkPointX) <= 5 and -5 <= (self.y-self.checkPointY) <= 5:
+                self.reachCheck = True
 
-        
-        #pygame.draw.rect(screen, self.colour, (self.x-scrollX, self.y-scrollY, self.width, self.height))
+        elif self.reachCheck == True:
+            # moves zombie based on position compared to player
+            if player.x-30 > self.x-scrollX: #player is to right
+                self.x += zombieSpeed
+
+            if player.x-30 < self.x-scrollX: # player is to left
+                self.x -= zombieSpeed
+
+            if player.y-30 > self.y-scrollY: # player is below zombie
+                self.y += zombieSpeed
+
+            if player.y-30 < self.y-scrollY: # player is above zombie
+                self.y -= zombieSpeed
+
+        #print(self.reachCheck, (self.x, self.y), (self.checkPointX, self.checkPointY))
+
+        #pygame.draw.rect(display, RED, (self.x-scrollX+30, self.y-scrollY+10, 70, 70), 1)
         display.blit(self.sprite, (self.x-scrollX, self.y-scrollY))
 
         
@@ -146,11 +187,13 @@ class Zombie():
 # functions                             #
 # ---------------------------------------#
 def redrawGameWindow():
+    pygame.mouse.set_visible(False)
+
     drawMap()
     drawPlayer()
     drawZombies()
-    drawZombieHitbox()
     drawRocks()
+    drawGun()
 
     healthBar()
     levelBar()
@@ -159,27 +202,31 @@ def redrawGameWindow():
     updateBullets()
     checkCollisions()
 
-    pygame.time.delay(1)
+    drawCrosshair()
+
+    clock.tick(60)
     pygame.display.update()
 
 def drawPlayer():
     player.show(display)
 
+def drawCrosshair():
+    crosshair.show()
+
 def drawZombies():
+    # draw zombie
     for zombieNumber in range(len(zombieList)):
         zombieList[zombieNumber].show()
 
+    # draw zombie health bar
     for z in zombieList:
         pygame.draw.rect(display, RED, (z.x-scrollX+32, z.y+2-scrollY, 60, 6))
         pygame.draw.rect(display, GREEN, (z.x-scrollX+32, z.y+2-scrollY, (z.hp/zombieLevelHP[player.level])*60, 6))
 
         if z.hp <= 0:
             zombieList.remove(z)
-
-def drawZombieHitbox():
-    #for z in zombieList:
-     #   pygame.draw.rect(display, RED, (z.x-scrollX+30, z.y-scrollY+10, 70, 70), 1)
-    pass
+            player.killCount+=1
+            player.levelProgress+=1  
 
 def drawRocks():
     for i in range(len(rockX)):
@@ -191,11 +238,14 @@ def drawTrees():
 
 def drawMap():
     # set colour for grass
-    display.fill(grass)
+    display.fill(BLACK)
     # set border
-    pygame.draw.rect(display, BLACK, (0-scrollX, 0-scrollY, 4000,4000), 1)    
+    pygame.draw.rect(display, grass, (0-scrollX, 0-scrollY, 4000,4000))    
     # set border
     #pygame.draw.rect(display, BLACK, (scrollValue-scrollX, scrollValue-scrollY, 4000,4000), 1)  
+
+def drawGun():
+    guns[0].show()
 
 def drawBullets():
     for b in bullets:
@@ -215,44 +265,60 @@ def updateBullets():
 
 def checkCollisions():
     for b in bullets:
+        if len(bullets) == 0:
+            print("hasdfasdgi")
+            break 
         for z in zombieList:
-            #pygame.draw.rect(display, RED, (z.x-scrollX+30, z.y-scrollY+10, 70, 70), 1)
             
             if (b.x>=z.x-scrollX+30 and b.x<=(z.x+70-scrollX)) and (b.y>=z.y-scrollY+10 and b.y<=(z.y+70-scrollY)):
             
                 print('hit')
                 z.hp -= 5
 
-                if len(bullets) > 0:
-                    bullets.remove(b)
-  
+                if len(bullets) <= 1:
+                    print(",,,,,,,,,,,,,,,,,,,,")
+                    break
+                    
+                print("YEOA:FKLJ:LAKDFJ")
+                bullets.remove(b)
+                        
+
 def healthBar():
     pygame.draw.rect(display, RED, (40,600,400,30))
     pygame.draw.rect(display, neonGreen, (40,600,player.hp,30))
 
 def levelBar():
-    levelProgress = (player.killCount/zombieLevelSpawn[player.level])*400
+    levelProgress = (player.levelProgress/zombieLevelSpawn[player.level])*400
     if levelProgress > 400:
         levelProgress = 400
     pygame.draw.rect(display, WHITE, (40,645,400,20))
     pygame.draw.rect(display, BLACK, (40,645,levelProgress,20))
+
+    if player.levelProgress == zombieLevelSpawn[player.level]:
+        player.levelProgress = 0
+        player.level += 1
+
+def drawStats():
+    pass
 
 # ---------------------------------------#
 # variables                             #
 # ---------------------------------------#
 player = Player((WIDTH/2)-35, (HEIGHT/2)-35)
 #player = Player(0, 0, 71, 71, 100, playerColour, 0, 0)
-playerSpeed = 0.6
-zombieSpeed = 0.2
+playerSpeed = 5
+zombieSpeed = 1.5
 
 zombieLevelHP = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
-zombieLevelSpawn = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130]
+zombieLevelSpawn = [100, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130]
+
+crosshair = Crosshair()
 
 # create random coordinates for rock placement
 rockX = []
 rockY = []
 rockSize = []
-for i in range(20):
+for i in range(100):
     rockX.append(randint(10, 3900))
     rockY.append(randint(10, 3900))
     rockSize.append(randint(50, 150))
@@ -275,6 +341,11 @@ for i in range(zombieLevelSpawn[player.level]):
 # list for bullets
 bullets = []
 
+# list of guns
+waterGun = Gun(player.x+20, player.y+20, "water gun.png")
+
+guns = [waterGun]
+
 # ---------------------------------------#
 # main program                           #
 # ---------------------------------------#
@@ -286,11 +357,10 @@ while inPlay:
             sys.exit()
 
         # shoots gun on left click
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1: 
-
+        if event.type == pygame.MOUSEBUTTONDOWN: 
             bullets.append(Bullets(player.x+30, player.y+30, 1))
-            player.killCount += 1
-            player.hp -= 10
+
+            player.hp -= 1
 
     #------move player-----#
     keys = pygame.key.get_pressed()
@@ -299,25 +369,25 @@ while inPlay:
         inPlay = False
   
     #-----------check if player is in border----------#
-    if (keys[pygame.K_a] and scrollX <= -548):
+    if (keys[pygame.K_a] and scrollX <= -563):
         scrollX = int(scrollX)
 
     elif keys[pygame.K_a]:
         scrollX -= playerSpeed
             
-    if keys[pygame.K_d] and scrollX >= 3390:
+    if keys[pygame.K_d] and scrollX >= 3365:
         scrollX = int(scrollX)
 
     elif keys[pygame.K_d]:
         scrollX += playerSpeed
 
-    if keys[pygame.K_w] and scrollY <= -308:
+    if keys[pygame.K_w] and scrollY <= -325:
         scrollY = int(scrollY)
 
     elif keys[pygame.K_w]:
         scrollY -= playerSpeed
         
-    if keys[pygame.K_s] and scrollY >= 3629:
+    if keys[pygame.K_s] and scrollY >= 3610:
         scrollY = int(scrollY)
 
     elif keys[pygame.K_s]:
