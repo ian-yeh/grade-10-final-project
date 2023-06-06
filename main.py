@@ -18,6 +18,7 @@ HEIGHT = 700
 TOP = 0
 BOTTOM = 600
 display = pygame.display.set_mode((WIDTH, HEIGHT))
+
 WHITE = (255, 255, 255) 
 YELLOW = (255, 255, 0)
 BLACK = (0, 0, 0)
@@ -35,24 +36,25 @@ gameEnd = False
 scrollX = 0
 scrollY = 0
 
+frameRateMultiplier = 2.2
+
 
 # ---------------------------------------#
-# classes                                #
 # ---------------------------------------#
-class gameObject:
-    def __init__(self, x, y, width, height):
+class Crate:
+    def __init__(self, x, y, size):
         self.x = x
         self.y = y
-        self.width = width
-        self.height = height
+        self.size = size
 
-class mapObject(gameObject):
-    def __init__(self, x, y, width, height, colour, radius):
-        super().__init__(x,y,width,height,)
-        self.colour = colour
-        self.radius = radius
+    def show(self):
+        self.image = pygame.image.load("crate.png")
+        self.sprite = pygame.transform.scale(self.image, (self.size, self.size))
+        self.rect = self.sprite.get_rect()
 
-class Gun():
+        display.blit(self.sprite, (self.x-scrollX, self.y-scrollY))
+
+class Gun:
     def __init__(self, x, y, picture):
         self.x = x
         self.y = y
@@ -81,7 +83,7 @@ class Gun():
 
         display.blit(self.sprite, (self.x, self.y))
 
-class Crosshair():
+class Crosshair:
     def __init__(self):
         self.image = pygame.image.load("crosshair.png")
 
@@ -89,7 +91,7 @@ class Crosshair():
         self.mouseCoords = pygame.mouse.get_pos()
         display.blit(self.image, (self.mouseCoords[0]-20, self.mouseCoords[1]-20))
 
-class Bullets():
+class Bullets:
     def __init__(self, x, y, damage):
         self.x = x
         self.y = y
@@ -97,8 +99,8 @@ class Bullets():
 
         self.angle = math.radians(math.degrees(math.atan2(guns[0].yDisplace, guns[0].xDisplace)))
         
-        self.xSpeed = 14 * math.cos(self.angle)
-        self.ySpeed = 14 * math.sin(self.angle)
+        self.xSpeed = 14*frameRateMultiplier * math.cos(self.angle)
+        self.ySpeed = 14*frameRateMultiplier * math.sin(self.angle)
 
         # load bullet png, rotate to angle of shot
         self.image = pygame.image.load("bullet.png")
@@ -107,7 +109,7 @@ class Bullets():
       
         self.rect = pygame.Rect(self.x, self.y, 5, 5)
         
-class Player():
+class Player:
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -126,16 +128,20 @@ class Player():
         self.mouseCoords = pygame.mouse.get_pos()
         self.spriteOrg = pygame.image.load("playerAnimation1.png")
 
+        
+
         if self.mouseCoords[0] >= WIDTH/2:
             self.sprite = pygame.transform.scale(self.spriteOrg, (70, 70))
+            
 
         else:
             self.sprite = pygame.transform.flip(pygame.transform.scale(self.spriteOrg, (70, 70)), True, False)
-        
 
+        self.rect = self.sprite.get_rect()
+        
         display.blit(self.sprite, (self.x, self.y))
 
-class Zombie():
+class Zombie:
     def __init__(self, x, y, hp, damage):
         self.x = x
         self.y = y 
@@ -201,7 +207,6 @@ def redrawGameWindow():
     drawMap()
     drawPlayer()
     drawZombies()
-    drawRocks()
     drawGun()
 
     healthBar()
@@ -215,12 +220,17 @@ def redrawGameWindow():
     zombieHit()
 
     drawCrosshair()
+    drawCrates()
 
-    clock.tick(60)
+    if gameEnd == True:
+        pygame.mouse.set_visible(True)
+        endScreen()
+
+    clock.tick(30)
     pygame.display.update()
 
 def endScreen():
-    display.fill(RED)
+    display.fill((100, 150, 200))
 
 
 def drawPlayer():
@@ -244,10 +254,18 @@ def drawZombies():
             player.killCount+=1
             player.levelProgress+=1  
 
-def drawRocks():
-    for i in range(len(rockX)):
-        newRock = pygame.transform.scale(rockImg, (rockSize[i], rockSize[i]))
-        display.blit(newRock, (rockX[i]-scrollX, rockY[i]-scrollY))
+def drawCrates():
+    for crate in crates:
+        crate.show()
+
+        pygame.draw.rect(display, RED, (crate.x-scrollX, crate.y-scrollY, crate.size, crate.size), 1)
+
+        if (player.x>=crate.x and player.x<=crate.x+crate.size) and (player.y>=crate.y and player.y<=crate.y+crate.size):
+            print("crate collision")
+
+        #else:
+         #   print("no crate collision")
+        
 
 def drawTrees():
     pass
@@ -310,7 +328,6 @@ def levelBar():
         player.level += 1
 
 def zombieHit():
-    
     for z in zombieList:
         if (player.x>=z.x-scrollX+30 and player.x<=(z.x+70-scrollX)) and (player.y>=z.y-scrollY+10 and player.y<=(z.y+70-scrollY)) and z.reachCheck == True:
             player.hp -= z.damage
@@ -331,8 +348,8 @@ def bulletTracker():
 # ---------------------------------------#
 player = Player((WIDTH/2)-35, (HEIGHT/2)-35)
 #player = Player(0, 0, 71, 71, 100, playerColour, 0, 0)
-playerSpeed = 5
-zombieSpeed = 1.5
+playerSpeed = 5 * frameRateMultiplier
+zombieSpeed = 1.5 * frameRateMultiplier
 
 zombieLevelHP = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
 zombieLevelSpawn = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130]
@@ -340,17 +357,18 @@ zombieLevelDamage = [100, 10, 15, 20, 25, 25, 30, 35, 40, 45, 45, 50, 60]
 
 crosshair = Crosshair()
 
-# create random coordinates for rock placement
-rockX = []
-rockY = []
-rockSize = []
+# create random coordinates for crate placement
+crateX = []
+crateY = []
+crateSize = []
 for i in range(100):
-    rockX.append(randint(10, 3900))
-    rockY.append(randint(10, 3900))
-    rockSize.append(randint(50, 150))
+    crateX.append(randint(10, 3900))
+    crateY.append(randint(10, 3900))
+    crateSize.append(randint(50, 150))
 
-rockImg = pygame.image.load("rock.png")
-rockImg.set_colorkey(WHITE)
+crates = []
+for i in range(100):
+    crates.append(Crate(crateX[i], crateY[i], crateSize[i]))
 
 # random zombie x, y spawns
 zombieX = []
@@ -441,12 +459,10 @@ while inPlay:
                 bulletsLeft = 0
 
     #------------------------------------------------#
-
-    if player.hp > 0:
-        redrawGameWindow()
-
     if player.hp <= 0:
-        endScreen()
+        gameEnd = True
+
+    redrawGameWindow()
 
     #-----------------------#
 
