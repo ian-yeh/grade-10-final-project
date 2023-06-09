@@ -23,9 +23,12 @@ YELLOW = (255, 255, 0)
 BLACK = (0, 0, 0)
 GREEN = (0, 100, 0)
 RED = (250, 0, 0)
+YELLOW = (237, 219, 78)
 grass = (98, 189, 98)
 neonGreen = (57, 255, 20)
 BORDER = (140, 140, 140)
+
+shopInterface = (140, 99, 65)
 
 outline = 0
 
@@ -39,7 +42,7 @@ gameEnd = False
 scrollX = 0
 scrollY = 0
 
-frameRateMultiplier = 2.5
+frameRateMultiplier = 1.5
 
 # ---------------------------------------#
 # ---------------------------------------#
@@ -233,7 +236,8 @@ def redrawGameWindow():
     drawPlayer()
     drawZombies()
     drawGun()
-
+    drawShop()
+    
     healthBar()
     levelBar()
 
@@ -253,7 +257,7 @@ def redrawGameWindow():
         pygame.mouse.set_visible(True)
         endScreen()
 
-    clock.tick(30)
+    clock.tick(60)
     pygame.display.update()
 
 def endScreen():
@@ -303,7 +307,12 @@ def drawCrates():
                 scrollX += playerSpeed
 
             if abs(crateRect.left - player.rect.right) < collisionTolerance: #collision with right of crate
-                scrollX -= playerSpeed     
+                scrollX -= playerSpeed 
+
+
+        shopRect = pygame.Rect(1600-scrollX, 980-scrollY, 200, 150)
+        if crateRect.colliderect(shopRect): 
+            crates.remove(crate)
 
 def drawMap():
     global scrollX
@@ -311,7 +320,9 @@ def drawMap():
     # set colour for grass
     display.fill(BORDER)
     # set border
-    pygame.draw.rect(display, grass, (0-scrollX, 0-scrollY, 4000,4000))    
+    pygame.draw.rect(display, grass, (0-scrollX, 0-scrollY, 4000,4000))   
+    #map = pygame.image.load("map.jpg")
+    #display.blit(map, (0-scrollX, 0-scrollY)) 
 
     # set border sides
     topSideRect = pygame.Rect(0-scrollX, -100-scrollY, 4000,100)
@@ -351,17 +362,44 @@ def drawBullets():
         #pygame.draw.rect(display, RED, b.rect)
 
 def updateBullets():
-    for b in bullets:
-        b.y += b.ySpeed
-        b.x += b.xSpeed
+    if currentGun == guns[0]:
+        for b in bullets:
+            b.x += b.xSpeed
+            b.y += b.ySpeed
 
-        if 0 >= b.x or WIDTH <= b.x:
-            if b in bullets:
-                bullets.remove(b)
+            if 0 >= b.x or WIDTH <= b.x:
+                if b in bullets:
+                    bullets.remove(b)
 
-        if 0 >= b.y or HEIGHT <= b.y:
-            if b in bullets:
-                bullets.remove(b)
+            if 0 >= b.y or HEIGHT <= b.y:
+                if b in bullets:
+                    bullets.remove(b)
+
+
+    if currentGun == guns[1] and bullets != []:
+        count = 0
+        for b in bullets:
+            count += 1
+            if count % 3 == 0:
+                b.x += b.xSpeed
+                b.y += b.ySpeed
+
+            if count % 3 == 1:
+                b.x += b.xSpeed+2
+                b.y += b.ySpeed+2
+
+            if count % 3 == 2:
+                b.x += b.xSpeed-2
+                b.y += b.ySpeed-2
+
+            if 0 >= b.x or WIDTH <= b.x:
+                if b in bullets:
+                    bullets.remove(b)
+
+            if 0 >= b.y or HEIGHT <= b.y:
+                if b in bullets:
+                    bullets.remove(b)
+
 
 addBullet = False
 def drawBulletPatch():
@@ -392,7 +430,6 @@ def drawCoinTracker():
     display.blit(moneyText, (40, 17))     
 
 def checkCollisions():
-    global zombieCollide
     for b in bullets:
         bRect = pygame.Rect(b.x, b.y, 5, 5)
         for z in zombieList:
@@ -413,14 +450,6 @@ def checkCollisions():
             if bRect.colliderect(crateRect):
                 if b in bullets:
                     bullets.remove(b)
-
-    for z in zombieList:
-        zRect = pygame.Rect(z.x-scrollX, z.y-scrollY, 70, 70)
-        for crate in crates:
-            crateRect = pygame.Rect((crate.x-5)-scrollX, (crate.y-5)-scrollY, crate.size+10, crate.size+10)
-            
-            if zRect.colliderect(crateRect):
-                zombieCollide = True
             
 def healthBar():
     pygame.draw.rect(display, RED, (100,HEIGHT-100,400,30))
@@ -456,8 +485,8 @@ def zombieHit():
 
 def drawStats():
     playerCoords = [round(scrollX), round(scrollY)]
-    showCoordinates = font3.render("[x, y] = " + str(playerCoords), 1, BLACK)
-    display.blit(showCoordinates, (200, 200))
+    showCoordinates = font2.render("[x, y] = " + str(playerCoords), 1, BLACK)
+    display.blit(showCoordinates, (100, HEIGHT-250))
 
 def bulletTracker():
     graphics2 = font2.render(str(bulletsLeft), 1, BLACK)
@@ -467,16 +496,19 @@ def bulletTracker():
     pygame.draw.line(display, BLACK, (145,HEIGHT-150), (145,HEIGHT-120), 1)
 
 def drawShop():
-    pass   
+    shop = pygame.image.load("shop2.png")
+    shopRect = pygame.Rect(1600-scrollX, 980-scrollY, 200, 150)
+    display.blit(shop, (1600-scrollX, 980-scrollY))   
+
+    if player.rect.colliderect(shopRect):
+        pygame.draw.rect(display, YELLOW, shopRect, 3)
+        pygame.draw.rect(display, shopInterface, (50, 50, WIDTH-100, HEIGHT-100))
 
 # ---------------------------------------#
 # variables                             #
 # ---------------------------------------#
 player = Player((WIDTH/2)-35, (HEIGHT/2)-35)
 playerSpeed = 5 * frameRateMultiplier
-
-# create boolean value for zombie crashing into crate
-zombieCollide = False
 
 zombieSpeedList = [1.5*frameRateMultiplier, 1.75*frameRateMultiplier, 2*frameRateMultiplier, 2.25*frameRateMultiplier, 2.5*frameRateMultiplier, 2.75*frameRateMultiplier, 3, 3.25*frameRateMultiplier, 3.5*frameRateMultiplier, 3.75*frameRateMultiplier, 4*frameRateMultiplier]
 zombieLevelHP = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
@@ -489,13 +521,13 @@ crosshair = Crosshair()
 crateX = []
 crateY = []
 crateSize = []
-for i in range(100):
+for i in range(85):
     crateX.append(randint(10, 3900))
     crateY.append(randint(10, 3900))
     crateSize.append(randint(50, 150))
 
 crates = []
-for i in range(100):
+for i in range(85):
     crates.append(Crate(crateX[i], crateY[i], crateSize[i]))
 
 # random zombie x, y spawns
@@ -530,7 +562,7 @@ waterGun = Gun(player.x+15, player.y+15, "water gun.png")
 superSoaker = Gun(player.x+15, player.y+15, "super soaker.png")
 
 guns = [waterGun, superSoaker]
-currentGun = guns[0]
+currentGun = guns[1]
 
 # list of mag size
 totalAmmo = 60
@@ -586,24 +618,27 @@ while inPlay:
             sys.exit()
 
         # shoots gun on left click
-        if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0 and currentGun == guns[1] and event.button == 1: 
-            bullets.append(Bullets(player.x+30, player.y+30, 1))    
+        if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0  and event.button == 1: 
+            if currentGun == guns[0]:
+                bullets.append(Bullets(player.x+30, player.y+30, 1))    
 
-            if bulletsLeft != 0:
-                bulletsLeft -= 1
-            
-            else:
-                bulletsLeft = 0
+                if bulletsLeft != 0:
+                    bulletsLeft -= 1
+                
+                else:
+                    bulletsLeft = 0
 
-        # shoots gun on left click
-        if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0 and currentGun == guns[0] and event.button == 1: 
-            bullets.append(Bullets(player.x+30, player.y+30, 1))
+        
+            if currentGun == guns[1]:
+                bullets.append(Bullets(player.x+30, player.y+30, 1))
+                bullets.append(Bullets(player.x+30, player.y+30, 1))
+                bullets.append(Bullets(player.x+30, player.y+30, 1))
 
-            if bulletsLeft != 0:
-                bulletsLeft -= 1
-            
-            else:
-                bulletsLeft = 0
+                if bulletsLeft != 0:
+                    bulletsLeft -= 1
+                
+                else:
+                    bulletsLeft = 0
 
     #------------------------------------------------#
     if player.hp <= 0:
