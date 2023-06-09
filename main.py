@@ -357,12 +357,10 @@ def drawGun():
 
 def drawBullets():
     for b in bullets:
-        #pygame.draw.rect(display, (0,0,0), (b.x,b.y,15,15)) 
         display.blit(b.bullet, (b.x, b.y))
-        #pygame.draw.rect(display, RED, b.rect)
 
 def updateBullets():
-    if currentGun == guns[0]:
+    if currentGun == guns[0] or currentGun == guns[1]:
         for b in bullets:
             b.x += b.xSpeed
             b.y += b.ySpeed
@@ -375,8 +373,7 @@ def updateBullets():
                 if b in bullets:
                     bullets.remove(b)
 
-
-    if currentGun == guns[1] and bullets != []:
+    if currentGun == guns[2] and bullets != []:
         count = 0
         for b in bullets:
             count += 1
@@ -400,6 +397,37 @@ def updateBullets():
                 if b in bullets:
                     bullets.remove(b)
 
+    if currentGun == guns[3] and bullets != []:
+        count2 = 0
+        for b in bullets:
+            count2 += 1
+            if count2 % 5 == 0:
+                b.x += b.xSpeed
+                b.y += b.ySpeed
+
+            if count2 % 5 == 1:
+                b.x += b.xSpeed+2
+                b.y += b.ySpeed+2
+
+            if count2 % 5 == 2:
+                b.x += b.xSpeed-2
+                b.y += b.ySpeed-2
+
+            if count2 % 5 == 3:
+                b.x += b.xSpeed-5
+                b.y += b.ySpeed-5
+
+            if count2 % 5 == 4:
+                b.x += b.xSpeed+5
+                b.y += b.ySpeed+5
+
+            if 0 >= b.x or WIDTH <= b.x:
+                if b in bullets:
+                    bullets.remove(b)
+
+            if 0 >= b.y or HEIGHT <= b.y:
+                if b in bullets:
+                    bullets.remove(b)
 
 addBullet = False
 def drawBulletPatch():
@@ -435,9 +463,16 @@ def checkCollisions():
         for z in zombieList:
             zRect = pygame.Rect(z.x-scrollX, z.y-scrollY, 70, 70)
             
-            if zRect.colliderect(bRect):
+            if zRect.colliderect(bRect) and (currentGun==guns[0] or currentGun==guns[2]):
                 print("hit")
                 z.hp -= 5
+
+                if b in bullets:
+                    bullets.remove(b)
+                
+            if zRect.colliderect(bRect) and (currentGun==guns[1] or currentGun==guns[3]):
+                print("hit")
+                z.hp -= 10
 
                 if b in bullets:
                     bullets.remove(b)
@@ -496,17 +531,76 @@ def bulletTracker():
     pygame.draw.line(display, BLACK, (145,HEIGHT-150), (145,HEIGHT-120), 1)
 
 def drawShop():
-    shop = pygame.image.load("shop2.png")
+    global inShop
+    global gunPressed
+    shop = pygame.image.load("shop.png")
     shopRect = pygame.Rect(1600-scrollX, 980-scrollY, 200, 150)
     display.blit(shop, (1600-scrollX, 980-scrollY))   
 
     if player.rect.colliderect(shopRect):
+        inShop = True
+
+        for z in zombieList:
+            z.speed = 0
+            z.damage = 0
         pygame.draw.rect(display, YELLOW, shopRect, 3)
-        pygame.draw.rect(display, shopInterface, (50, 50, WIDTH-100, HEIGHT-100))
+        display.blit(pygame.image.load("shopInterface.png"), (200, 150))
+
+        pos = pygame.mouse.get_pos()
+        mouseRect = pygame.Rect(pos[0], pos[1], 1, 1)
+
+        # guns panel
+        rect1 = pygame.Rect(308, 341, 185, 116)
+        rect2 = pygame.Rect(518, 341, 185, 116)
+        rect3 = pygame.Rect(308, 494, 185, 116)
+        rect4 = pygame.Rect(518, 494, 185, 116)
+
+        # items panel
+        rect5 = pygame.Rect(844, 341, 185, 116)
+        rect6 = pygame.Rect(1054, 341, 185, 116)
+        rect7 = pygame.Rect(844, 494, 185, 116)
+        rect8 = pygame.Rect(1054, 494, 185, 116)
+
+        if mouseRect.colliderect(rect1):
+            pygame.draw.rect(display, YELLOW, rect1, 5)
+            gunPressed = "Spritz"
+
+        if mouseRect.colliderect(rect2):
+            pygame.draw.rect(display, YELLOW, rect2, 5)
+            gunPressed = "Super Soaker"
+
+        if mouseRect.colliderect(rect3):
+            pygame.draw.rect(display, YELLOW, rect3, 5)
+            gunPressed = "Splash"
+
+        if mouseRect.colliderect(rect4):
+            pygame.draw.rect(display, YELLOW, rect4, 5)
+            gunPressed = "Wetter"
+
+        if mouseRect.colliderect(rect5):
+            pygame.draw.rect(display, YELLOW, rect5, 5)
+
+        if mouseRect.colliderect(rect6):
+            pygame.draw.rect(display, YELLOW, rect6, 5)
+
+        if mouseRect.colliderect(rect7):
+            pygame.draw.rect(display, YELLOW, rect7, 5)
+
+        if mouseRect.colliderect(rect8):
+            pygame.draw.rect(display, YELLOW, rect8, 5)
+
+    else:
+        for z in zombieList:
+            z.speed = zombieSpeedList[player.level]
+            z.damage = zombieLevelDamage[player.level]
+
+        inShop = False
 
 # ---------------------------------------#
 # variables                             #
 # ---------------------------------------#
+inShop = False
+
 player = Player((WIDTH/2)-35, (HEIGHT/2)-35)
 playerSpeed = 5 * frameRateMultiplier
 
@@ -560,9 +654,13 @@ bullets = []
 # list of guns
 waterGun = Gun(player.x+15, player.y+15, "water gun.png")
 superSoaker = Gun(player.x+15, player.y+15, "super soaker.png")
+splash = Gun(player.x+15, player.y+15, "splash.png")
+theWetter = Gun(player.x+5, player.y+5, "the wetter.png")
 
-guns = [waterGun, superSoaker]
-currentGun = guns[1]
+guns = [waterGun, superSoaker, splash, theWetter]
+currentGun = guns[0]
+
+gunPressed = ""
 
 # list of mag size
 totalAmmo = 60
@@ -617,28 +715,72 @@ while inPlay:
             pygame.quit()
             sys.exit()
 
-        # shoots gun on left click
-        if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0  and event.button == 1: 
-            if currentGun == guns[0]:
-                bullets.append(Bullets(player.x+30, player.y+30, 1))    
+        if not inShop:
 
-                if bulletsLeft != 0:
-                    bulletsLeft -= 1
-                
-                else:
-                    bulletsLeft = 0
+            # shoots gun on left click
+            if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0  and event.button == 1: 
+                if currentGun == guns[0] or currentGun == guns[1]:
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))    
 
-        
-            if currentGun == guns[1]:
-                bullets.append(Bullets(player.x+30, player.y+30, 1))
-                bullets.append(Bullets(player.x+30, player.y+30, 1))
-                bullets.append(Bullets(player.x+30, player.y+30, 1))
+                    if bulletsLeft > 0:
+                        bulletsLeft -= 1
+                    
+                    else:
+                        bulletsLeft = 0
 
-                if bulletsLeft != 0:
-                    bulletsLeft -= 1
-                
-                else:
-                    bulletsLeft = 0
+                if currentGun == guns[2]:
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+
+                    if bulletsLeft > 0:
+                        bulletsLeft -= 3
+                    
+                    else:
+                        bulletsLeft = 0
+
+                if currentGun == guns[3]:
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+                    bullets.append(Bullets(player.x+30, player.y+30, 1))
+
+                    if bulletsLeft > 0:
+                        bulletsLeft -= 5
+                    
+                    else:
+                        bulletsLeft = 0
+
+        if inShop:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if gunPressed == "Spritz":
+                    currentGun = guns[0]
+
+                if gunPressed == "Super Soaker":
+                    if player.money - 4000 >= 0:
+                        player.money -= 4000
+                        currentGun = guns[1]
+
+                    else:
+                        pass
+
+                if gunPressed == "Splash":
+                    if player.money - 6000 >= 0:
+                        player.money -= 6000
+                        currentGun = guns[2]
+
+                    else:
+                        pass
+
+                if gunPressed == "Wetter":
+                    
+                    if player.money - 10000 >= 0:
+                        player.money -= 10000
+                        currentGun = guns[3]
+
+                    else:
+                        pass
 
     #------------------------------------------------#
     if player.hp <= 0:
