@@ -13,6 +13,7 @@ import pygame, sys
 # screen config/pygame set display
 pygame.init()
 clock = pygame.time.Clock()
+BEGIN = pygame.time.get_ticks()
 WIDTH = 1536
 HEIGHT = 864
 
@@ -237,6 +238,9 @@ def redrawGameWindow():
     drawZombies()
     drawGun()
     drawShop()
+
+    reloadAnimation()
+    reloadInstructions()
     
     healthBar()
     levelBar()
@@ -252,6 +256,7 @@ def redrawGameWindow():
     drawCrosshair()
 
     drawStats()
+    drawTime()
     
     if gameEnd == True:
         pygame.mouse.set_visible(True)
@@ -351,6 +356,46 @@ def drawMap():
 
     if player.rect.colliderect(leftSideRect):
         scrollX += playerSpeed      
+
+#Animation Images#  
+animationScaleFactor = 40
+reloadAnimation1 = pygame.transform.scale(pygame.image.load("reload1.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation2 = pygame.transform.scale(pygame.image.load("reload2.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation3 = pygame.transform.scale(pygame.image.load("reload3.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation4 = pygame.transform.scale(pygame.image.load("reload4.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation5 = pygame.transform.scale(pygame.image.load("reload5.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation6 = pygame.transform.scale(pygame.image.load("reload6.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation7 = pygame.transform.scale(pygame.image.load("reload7.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation8 = pygame.transform.scale(pygame.image.load("reload8.png"), (animationScaleFactor, animationScaleFactor))
+reloadAnimation9 = pygame.transform.scale(pygame.image.load("reload9.png"), (animationScaleFactor, animationScaleFactor))
+
+reload_Imgs = [reloadAnimation1, reloadAnimation2, reloadAnimation3, reloadAnimation4, reloadAnimation5, reloadAnimation6, reloadAnimation7, reloadAnimation8, reloadAnimation9]
+animationCount = 0
+loopCount = 0
+pressedReload = False
+joe = False
+def reloadAnimation():
+    global loopCount
+    global animationCount
+    global pressedReload
+    global joe
+    if (pressedReload or joe):
+        joe = True
+        if animationCount + 1 >= 27:
+            animationCount = 0 
+        animationCount += 1
+        display.blit(reload_Imgs[animationCount//3], ((WIDTH/2)-30, (HEIGHT/2)-30))
+        if reload_Imgs[animationCount//3] == reloadAnimation9:
+            pressedReload = False
+            joe = False
+            animationCount = 0 
+
+def reloadInstructions():
+    global bulletsLeft
+    global pressedReload
+    if bulletsLeft == 0 and not pressedReload:
+        graphics = font.render("Press R to reload", 1, BLACK) 
+        display.blit(graphics, (500,300))        
 
 def drawGun():
     currentGun.show()
@@ -523,6 +568,14 @@ def drawStats():
     showCoordinates = font2.render("[x, y] = " + str(playerCoords), 1, BLACK)
     display.blit(showCoordinates, (100, HEIGHT-250))
 
+def drawTime():
+    elapsed = pygame.time.get_ticks() - BEGIN
+    minutesPassed = int(elapsed / (1000 * 60))
+    secondsPassed = int((elapsed / 1000) % 60)
+    millisecondsPassed = int((elapsed % 1000) / 10)
+    timer = font.render(f"{minutesPassed:2d}:{secondsPassed:2d}:{millisecondsPassed:3d}", True,(0, 0, 0))
+    display.blit(timer, (1100, 20))
+
 def bulletTracker():
     graphics2 = font2.render(str(bulletsLeft), 1, BLACK)
     graphics3 = font2.render(str(totalAmmo), 1, BLACK)
@@ -669,9 +722,46 @@ magSize = 30
 
 keysPressed = 0
 
+pressedReload = False
+
 # ---------------------------------------#
 # main program                           #
 # ---------------------------------------#
+startScreen = pygame.image.load("Home Screen 1.png")
+startScreen2 = pygame.image.load("Home Screen 2.png")
+startScreen3 = pygame.image.load("Home Screen 3.png")
+controlScreen = pygame.image.load("Controls Screen.png")
+startMenu = True
+bob = False
+count = 0
+
+while startMenu:
+    mousePosition = pygame.mouse.get_pos()
+    for event in pygame.event.get():
+        if mousePosition[0] >= 361 and mousePosition[1] >= 307 and mousePosition[0] <= 831 and mousePosition[1] <= 396:
+            if not bob:
+                display.blit(startScreen2, (0,0))
+                pygame.display.update()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    startMenu = False
+        elif (mousePosition[0] >= 361 and mousePosition[1] >= 438 and mousePosition[0] <= 831 and mousePosition[1] <= 528) or bob:
+            if not bob:
+                display.blit(startScreen3, (0,0))
+                pygame.display.update()
+            if event.type == pygame.MOUSEBUTTONDOWN or bob:
+                bob = True
+                display.blit(controlScreen, (0,0))
+                pygame.display.update()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    print("Joe")
+                if mousePosition[0] <= 1137 and mousePosition[1] <= 149 and mousePosition[0] >= 1038 and mousePosition[1] >= 41:
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        bob = False
+                      #  print("Joe")
+        elif not bob:
+            display.blit(startScreen, (0,0))
+            pygame.display.update()
+
 while inPlay:
     keysPressed = 0
     #------move player-----#
@@ -694,14 +784,16 @@ while inPlay:
         scrollY += playerSpeed  
 
     if keys[pygame.K_r] and totalAmmo != 0:
+       
         if bulletsLeft != magSize:
+            pressedReload = True
             totalAmmo = totalAmmo - (magSize-bulletsLeft)
             if totalAmmo <= 0:
                 bulletsLeft += totalAmmo+(magSize-bulletsLeft)
                 totalAmmo = 0
-    
+        
             else:
-                bulletsLeft = magSize
+                bulletsLeft = magSize    
     
     if keys[pygame.K_e]: 
         addBullet = True
