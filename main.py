@@ -38,7 +38,7 @@ font2 = pygame.font.Font("CaviarDreams.ttf", 30)
 font3 = pygame.font.Font("CaviarDreams.ttf", 35)
 
 inPlay = True
-gameEnd = False
+gameEnd = ""
 
 scrollX = 0
 scrollY = 0
@@ -65,8 +65,6 @@ class Crate:
         self.size = size
 
         self.rect = pygame.Rect(self.x-scrollX, self.y-scrollY, self.size, self.size)
-
-        
 
     def show(self):
         self.image = pygame.image.load("crate.png")
@@ -125,8 +123,8 @@ class Bullets:
         
         self.angle = math.radians(math.degrees(math.atan2(self.yDisplace, self.xDisplace)))
         
-        self.xSpeed = 14*frameRateMultiplier * math.cos(self.angle)
-        self.ySpeed = 14*frameRateMultiplier * math.sin(self.angle)
+        self.xSpeed = bulletSpeed*frameRateMultiplier * math.cos(self.angle)
+        self.ySpeed = bulletSpeed*frameRateMultiplier * math.sin(self.angle)
 
         # load bullet png, rotate to angle of shot
         self.image = pygame.image.load("bullet.png")
@@ -142,7 +140,7 @@ class Player:
         self.killCount = 0
         self.money = 0
 
-        self.hp = 400
+        self.hp = 500
 
         self.level = 0
         self.levelProgress = 0
@@ -151,11 +149,12 @@ class Player:
         self.count = 0
 
         self.rect = pygame.Rect(self.x, self.y, 70,70)
+        self.spriteOrg = pygame.image.load("playerAnimation1.png")
+
+        
 
     def show(self, screen):
         self.mouseCoords = pygame.mouse.get_pos()
-        self.spriteOrg = pygame.image.load("playerAnimation1.png")
-
         
         if self.mouseCoords[0] >= WIDTH/2:
             self.sprite = pygame.transform.scale(self.spriteOrg, (70, 70))
@@ -166,7 +165,9 @@ class Player:
         
         
         display.blit(self.sprite, (self.x, self.y))
-        pygame.draw.rect(display, RED, self.rect, 1)
+
+        # draw player hitbox
+        #pygame.draw.rect(display, RED, self.rect, 1)
 
 class Zombie:
     def __init__(self, x, y, hp, damage, speed):
@@ -237,8 +238,7 @@ def redrawGameWindow():
     drawPlayer()
     drawZombies()
     drawGun()
-    drawShop()
-
+    
     reloadAnimation()
     reloadInstructions()
     
@@ -253,20 +253,30 @@ def redrawGameWindow():
 
     zombieHit()
 
-    drawCrosshair()
-
     drawStats()
     drawTime()
+
+    playerInvincible()
+
+    drawShop()
+    drawCrosshair()
     
-    if gameEnd == True:
+    if gameEnd == "lose":
         pygame.mouse.set_visible(True)
-        endScreen()
+        loseScreen()
+
+    if gameEnd == "win":
+        pygame.mouse.set_visible(True)
+        winScreen()
 
     clock.tick(60)
     pygame.display.update()
 
-def endScreen():
-    display.fill((100, 150, 200))
+def loseScreen():
+    display.blit(pygame.image.load("lose screen.png"), (0,0))
+
+def winScreen():
+    display.fill((WHITE))
 
 def drawPlayer():
     player.show(display)
@@ -288,7 +298,9 @@ def drawZombies():
             zombieList.remove(z)
             player.killCount+=1
             player.levelProgress+=1  
-            player.money += 100
+            player.money += 1000
+
+            zombieHit1.play()
 
 def drawCrates():
     global crateRect
@@ -485,7 +497,7 @@ def drawBulletPatch():
             pygame.draw.circle(display,BLACK, (i.x-scrollX+40, i.y-scrollY+40), 60, 1)
             pygame.draw.rect(display, BLACK, (i.x-scrollX+70, i.y-scrollY-15, 40, 40), 1)
             pygame.draw.rect(display, grass, (i.x-scrollX+71, i.y-scrollY-14, 38,38))
-            graphics = font3.render("E", 1, BLACK)
+            graphics = font3.render("F", 1, BLACK)
             display.blit(graphics, (i.x-scrollX+80, i.y-scrollY-16))
 
             if addBullet == True:
@@ -497,12 +509,14 @@ def drawBulletPatch():
 
 def drawCoinTracker():
     coinImg = pygame.image.load("Coin.png")
-    newcoinImg = pygame.transform.scale(coinImg, (20, 20))
+    newcoinImg = pygame.transform.scale(coinImg, (50, 50))
     display.blit(newcoinImg, (10,15))
-    moneyText = font.render(str(player.money), 1, BLACK)
-    display.blit(moneyText, (40, 17))     
+    moneyText = font3.render(str(player.money), 1, BLACK)
+    display.blit(moneyText, (73, 18))     
 
 def checkCollisions():
+    global missedShots
+
     for b in bullets:
         bRect = pygame.Rect(b.x, b.y, 5, 5)
         for z in zombieList:
@@ -510,14 +524,16 @@ def checkCollisions():
             
             if zRect.colliderect(bRect) and (currentGun==guns[0] or currentGun==guns[2]):
                 print("hit")
-                z.hp -= 5
+                missedShots = 0
+                z.hp -= 5*damageMultiplier
 
                 if b in bullets:
                     bullets.remove(b)
                 
             if zRect.colliderect(bRect) and (currentGun==guns[1] or currentGun==guns[3]):
+                missedShots = 0
                 print("hit")
-                z.hp -= 10
+                z.hp -= 10*damageMultiplier
 
                 if b in bullets:
                     bullets.remove(b)
@@ -532,8 +548,8 @@ def checkCollisions():
                     bullets.remove(b)
             
 def healthBar():
-    pygame.draw.rect(display, RED, (100,HEIGHT-100,400,30))
-    pygame.draw.rect(display, neonGreen, (100,HEIGHT-100,player.hp,30))
+    pygame.draw.rect(display, RED, (70,HEIGHT-100,400,30))
+    pygame.draw.rect(display, neonGreen, (70,HEIGHT-100,(player.hp/currentHealth)*400,30))
 
 def levelBar():
     levelProgress = (player.levelProgress/zombieLevelSpawn[player.level])*400
@@ -543,13 +559,15 @@ def levelBar():
     if levelProgress > 400:
         levelProgress = 400
 
-    pygame.draw.rect(display, WHITE, (100,HEIGHT-50,400,20))
-    pygame.draw.rect(display, BLACK, (100,HEIGHT-50,levelProgress,20))
+    pygame.draw.rect(display, WHITE, (70,HEIGHT-50,400,20))
+    pygame.draw.rect(display, BLACK, (70,HEIGHT-50,levelProgress,20))
 
-    graphics = font.render(levelText, 1, BLACK)
+    graphics = font.render(levelText, 1, RED)
     display.blit(graphics, (350, HEIGHT-50))
 
     if player.levelProgress == zombieLevelSpawn[player.level]:
+        hooray.play()
+
         player.levelProgress = 0
         player.level += 1
         zombieList.clear()
@@ -564,28 +582,35 @@ def zombieHit():
             z.reachCheck = False
 
 def drawStats():
+
+    # display coordinates
     playerCoords = [round(scrollX), round(scrollY)]
     showCoordinates = font2.render("[x, y] = " + str(playerCoords), 1, BLACK)
-    display.blit(showCoordinates, (100, HEIGHT-250))
+    display.blit(showCoordinates, (70, HEIGHT-200))
+
+    # display kill count
+    killCount = font2.render("Kills: " + str(player.killCount), 1, BLACK)
+    display.blit(killCount, (70, HEIGHT-250))
 
 def drawTime():
+    global elapsed
     elapsed = pygame.time.get_ticks() - BEGIN
     minutesPassed = int(elapsed / (1000 * 60))
     secondsPassed = int((elapsed / 1000) % 60)
     millisecondsPassed = int((elapsed % 1000) / 10)
-    timer = font.render(f"{minutesPassed:2d}:{secondsPassed:2d}:{millisecondsPassed:3d}", True,(0, 0, 0))
-    display.blit(timer, (1100, 20))
+    timer = font3.render(f"{minutesPassed:2d}:{secondsPassed:2d}:{millisecondsPassed:3d}", True,(0, 0, 0))
+    display.blit(timer, (WIDTH-180, 20))
 
 def bulletTracker():
     graphics2 = font2.render(str(bulletsLeft), 1, BLACK)
     graphics3 = font2.render(str(totalAmmo), 1, BLACK)
-    display.blit(graphics2, (100, HEIGHT-150))
-    display.blit(graphics3, (155, HEIGHT-150))
-    pygame.draw.line(display, BLACK, (145,HEIGHT-150), (145,HEIGHT-120), 1)
+    display.blit(graphics2, (70, HEIGHT-150))
+    display.blit(graphics3, (125, HEIGHT-150))
+    pygame.draw.line(display, BLACK, (115,HEIGHT-150), (115,HEIGHT-120), 1)
 
 def drawShop():
-    global inShop
-    global gunPressed
+    global inShop, gunPressed, itemPressed, inShop1, inShop2
+
     shop = pygame.image.load("shop.png")
     shopRect = pygame.Rect(1600-scrollX, 980-scrollY, 200, 150)
     display.blit(shop, (1600-scrollX, 980-scrollY))   
@@ -603,66 +628,128 @@ def drawShop():
         mouseRect = pygame.Rect(pos[0], pos[1], 1, 1)
 
         # guns panel
-        rect1 = pygame.Rect(308, 341, 185, 116)
-        rect2 = pygame.Rect(518, 341, 185, 116)
-        rect3 = pygame.Rect(308, 494, 185, 116)
-        rect4 = pygame.Rect(518, 494, 185, 116)
+        rect1 = pygame.Rect(308, 341, 185, 116) # Spritz
+        rect2 = pygame.Rect(518, 341, 185, 116) # super soaker
+        rect3 = pygame.Rect(308, 494, 185, 116) # splash
+        rect4 = pygame.Rect(518, 494, 185, 116) # the wetter
 
         # items panel
-        rect5 = pygame.Rect(844, 341, 185, 116)
-        rect6 = pygame.Rect(1054, 341, 185, 116)
-        rect7 = pygame.Rect(844, 494, 185, 116)
-        rect8 = pygame.Rect(1054, 494, 185, 116)
+        rect5 = pygame.Rect(844, 341, 185, 116) # health
+        rect6 = pygame.Rect(1054, 341, 185, 116) # invincibility
+        rect7 = pygame.Rect(844, 494, 185, 116) # speed boost
+        rect8 = pygame.Rect(1054, 494, 185, 116) # medkit
 
-        if mouseRect.colliderect(rect1):
-            pygame.draw.rect(display, YELLOW, rect1, 5)
-            gunPressed = "Spritz"
+        rect9 = pygame.Rect(308, 341, 185, 116) # Spritz
+        rect10 = pygame.Rect(518, 341, 185, 116) # super soaker
+        rect11 = pygame.Rect(308, 494, 185, 116) # splash
 
-        if mouseRect.colliderect(rect2):
-            pygame.draw.rect(display, YELLOW, rect2, 5)
-            gunPressed = "Super Soaker"
+        nextButton = pygame.Rect(1074, 162, 180, 50)
+        
+        backButton = pygame.Rect(1074, 162, 180, 50)
 
-        if mouseRect.colliderect(rect3):
-            pygame.draw.rect(display, YELLOW, rect3, 5)
-            gunPressed = "Splash"
+        if inShop1:
+            if mouseRect.colliderect(rect1):
+                pygame.draw.rect(display, YELLOW, rect1, 5)
+                gunPressed = "Spritz"
 
-        if mouseRect.colliderect(rect4):
-            pygame.draw.rect(display, YELLOW, rect4, 5)
-            gunPressed = "Wetter"
+            if mouseRect.colliderect(rect2):
+                pygame.draw.rect(display, YELLOW, rect2, 5)
+                gunPressed = "Super Soaker"
 
-        if mouseRect.colliderect(rect5):
-            pygame.draw.rect(display, YELLOW, rect5, 5)
+            if mouseRect.colliderect(rect3):
+                pygame.draw.rect(display, YELLOW, rect3, 5)
+                gunPressed = "Splash"
 
-        if mouseRect.colliderect(rect6):
-            pygame.draw.rect(display, YELLOW, rect6, 5)
+            if mouseRect.colliderect(rect4):
+                pygame.draw.rect(display, YELLOW, rect4, 5)
+                gunPressed = "Wetter"
 
-        if mouseRect.colliderect(rect7):
-            pygame.draw.rect(display, YELLOW, rect7, 5)
+            if mouseRect.colliderect(rect5):
+                pygame.draw.rect(display, YELLOW, rect5, 5)
+                itemPressed = "health"
 
-        if mouseRect.colliderect(rect8):
-            pygame.draw.rect(display, YELLOW, rect8, 5)
+            if mouseRect.colliderect(rect6):
+                pygame.draw.rect(display, YELLOW, rect6, 5)
+                itemPressed = "invincibility"
+
+            if mouseRect.colliderect(rect7):
+                pygame.draw.rect(display, YELLOW, rect7, 5)
+                itemPressed = "speed"
+
+            if mouseRect.colliderect(rect8):
+                pygame.draw.rect(display, YELLOW, rect8, 5)
+                itemPressed = "medkit"
+
+            if mouseRect.colliderect(nextButton):
+                itemPressed = "nextButton"
+                pygame.draw.rect(display, YELLOW, nextButton, 5)
+                
+
+        if inShop2:
+            display.blit(pygame.image.load("shopInterface2.png"), (200, 150))
+
+            if mouseRect.colliderect(rect9):
+                pygame.draw.rect(display, YELLOW, rect9, 5)
+                itemPressed = "bullet speed"
+
+            if mouseRect.colliderect(rect10):
+                pygame.draw.rect(display, YELLOW, rect10, 5)
+                itemPressed = "double damage"
+
+            if mouseRect.colliderect(rect11):
+                pygame.draw.rect(display, YELLOW, rect11, 5)
+                itemPressed = "add health"
+
+            if mouseRect.colliderect(backButton):
+                itemPressed = "backButton"
+                pygame.draw.rect(display, YELLOW, backButton, 5)
 
     else:
         for z in zombieList:
             z.speed = zombieSpeedList[player.level]
-            z.damage = zombieLevelDamage[player.level]
+            if not invincible:
+                z.damage = zombieLevelDamage[player.level]
 
         inShop = False
+
+def playerInvincible():
+    global startTime
+    #print(elapsed, startTime)
+
+    if invincible:
+        player.spriteOrg = pygame.image.load("invincibility.png")
+
+        for z in zombieList:
+            z.damage = 0
+
+        if elapsed-startTime > 5000:
+            
+            for z in zombieList:
+                z.damage = zombieLevelDamage[player.level]
+
+            invicible = False
+            startTime = 0
+
+            player.spriteOrg = pygame.image.load("playerAnimation1.png")
 
 # ---------------------------------------#
 # variables                             #
 # ---------------------------------------#
 inShop = False
+inShop1 = True
+inShop2 = False
 
 player = Player((WIDTH/2)-35, (HEIGHT/2)-35)
 playerSpeed = 5 * frameRateMultiplier
 
-zombieSpeedList = [1.5*frameRateMultiplier, 1.75*frameRateMultiplier, 2*frameRateMultiplier, 2.25*frameRateMultiplier, 2.5*frameRateMultiplier, 2.75*frameRateMultiplier, 3, 3.25*frameRateMultiplier, 3.5*frameRateMultiplier, 3.75*frameRateMultiplier, 4*frameRateMultiplier]
-zombieLevelHP = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
-zombieLevelSpawn = [10, 15, 15, 20, 20, 30, 35, 35, 35, 35, 40, 45, 50]
-zombieLevelDamage = [20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 75, 80, 85]
+zombieSpeedList = [1.5*frameRateMultiplier, 1.75*frameRateMultiplier, 2*frameRateMultiplier, 2.25*frameRateMultiplier, 2.5*frameRateMultiplier, 2.75*frameRateMultiplier, 3*frameRateMultiplier, 3.25*frameRateMultiplier, 3.5*frameRateMultiplier, 3.75*frameRateMultiplier, 4*frameRateMultiplier, 4.5*frameRateMultiplier, 5*frameRateMultiplier, 5.5*frameRateMultiplier, 5.75*frameRateMultiplier, 6*frameRateMultiplier, 6.25*frameRateMultiplier, 6.5*frameRateMultiplier, 7*frameRateMultiplier, 1000]
+zombieLevelHP = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 100, 110, 120, 1000]
+zombieLevelSpawn = [10, 15, 15, 20, 20, 30, 35, 35, 35, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 130, 1000]
+zombieLevelDamage = [20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 75, 80, 85, 90, 100, 110, 120, 130, 140, 150, 1000]
 
 crosshair = Crosshair()
+
+bulletSpeed = 14
 
 # create random coordinates for crate placement
 crateX = []
@@ -710,10 +797,13 @@ superSoaker = Gun(player.x+15, player.y+15, "super soaker.png")
 splash = Gun(player.x+15, player.y+15, "splash.png")
 theWetter = Gun(player.x+5, player.y+5, "the wetter.png")
 
+damageMultiplier = 1
+
 guns = [waterGun, superSoaker, splash, theWetter]
 currentGun = guns[0]
 
 gunPressed = ""
+itemPressed = ""
 
 # list of mag size
 totalAmmo = 60
@@ -723,6 +813,28 @@ magSize = 30
 keysPressed = 0
 
 pressedReload = False
+
+invincible = False
+
+startTime = 0
+elapsed = 0
+
+missedShots = 0
+
+currentHealth = 400
+
+# sounds
+pewSound = pygame.mixer.Sound("classicShot.wav")
+hooray = pygame.mixer.Sound("hooray.wav")
+reloading = pygame.mixer.Sound("reloading.wav")
+
+zombieHit1 = pygame.mixer.Sound("zombieHit1.wav")
+
+imInvincible = pygame.mixer.Sound("imInvincible.wav")
+
+walking = pygame.mixer.Sound("mcWalk.mp3")
+
+aimBad = pygame.mixer.Sound("aimBad.wav")
 
 # ---------------------------------------#
 # main program                           #
@@ -763,29 +875,30 @@ while startMenu:
             pygame.display.update()
 
 while inPlay:
-    keysPressed = 0
     #------move player-----#
     keys = pygame.key.get_pressed()
     
     if keys[pygame.K_ESCAPE]:
         inPlay = False
-  
+
     #-----------check if player is in border----------#
     if keys[pygame.K_a]:
         scrollX -= playerSpeed
-
+        
     if keys[pygame.K_d]:
         scrollX += playerSpeed 
-
+    
     if keys[pygame.K_w]:
         scrollY -= playerSpeed
-
+        
     if keys[pygame.K_s]:
         scrollY += playerSpeed  
 
     if keys[pygame.K_r] and totalAmmo != 0:
        
         if bulletsLeft != magSize:
+            reloading.play()
+
             pressedReload = True
             totalAmmo = totalAmmo - (magSize-bulletsLeft)
             if totalAmmo <= 0:
@@ -795,7 +908,7 @@ while inPlay:
             else:
                 bulletsLeft = magSize    
     
-    if keys[pygame.K_e]: 
+    if keys[pygame.K_f]: 
         addBullet = True
     
     else:
@@ -811,6 +924,10 @@ while inPlay:
 
             # shoots gun on left click
             if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0  and event.button == 1: 
+                
+                missedShots += 1
+                #print(missedShots)
+                pewSound.play()
                 if currentGun == guns[0] or currentGun == guns[1]:
                     bullets.append(Bullets(player.x+30, player.y+30, 1))    
 
@@ -854,16 +971,10 @@ while inPlay:
                         player.money -= 4000
                         currentGun = guns[1]
 
-                    else:
-                        pass
-
                 if gunPressed == "Splash":
                     if player.money - 6000 >= 0:
                         player.money -= 6000
                         currentGun = guns[2]
-
-                    else:
-                        pass
 
                 if gunPressed == "Wetter":
                     
@@ -871,12 +982,76 @@ while inPlay:
                         player.money -= 10000
                         currentGun = guns[3]
 
-                    else:
-                        pass
+                if itemPressed == "health":
 
+                    if player.money - 500 >= 0:
+
+                        if player.hp + 50 > 500:
+                            player.hp = 500
+
+                        else:
+                            player.hp += 75
+
+                        player.money -= 50
+
+                if itemPressed == "invincibility":
+        
+                    if player.money - 3500 >= 0:
+                        imInvincible.play()
+
+                        startTime = pygame.time.get_ticks()
+                        invincible = True
+                        player.money -= 3500
+
+                if itemPressed == "speed":
+                    if player.money - 2500 >= 0:
+                        playerSpeed += 3
+
+                        player.money -= 2500
+
+                if itemPressed == "medkit":
+                    if player.money - 4000 >= 0:
+                        player.hp = 500
+
+                        player.money -= 4000
+
+                if itemPressed == "bullet speed":
+        
+                    if player.money - 10000 >= 0:
+                        bulletSpeed *= 2
+                        player.money -= 10000
+
+                if itemPressed == "double damage":
+                    if player.money - 15000 >= 0:
+                        damageMultiplier *= 2
+
+                        player.money -= 15000
+
+                if itemPressed == "add health":
+                    if player.money - 8000 >= 0:
+                        currentHealth += 100
+
+                        player.money -= 8000
+
+                if itemPressed == "nextButton":
+                    inShop1 = False
+                    inShop2 = True
+
+                if itemPressed == "backButton":
+                    inShop1 = True
+                    inShop2 = False
+        itemPressed = ""
+        gunPressed = ""  
     #------------------------------------------------#
     if player.hp <= 0:
-        gameEnd = True
+        gameEnd = "lose"
+
+    if player.level == 20:
+        gameEnd = "win"
+
+    if missedShots >= 7:
+        aimBad.play()
+        missedShots = 0
 
     redrawGameWindow()
 
