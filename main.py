@@ -298,7 +298,7 @@ def drawZombies():
             zombieList.remove(z)
             player.killCount+=1
             player.levelProgress+=1  
-            player.money += 1000
+            player.money += 1000000
 
             zombieHit1.play()
 
@@ -722,7 +722,7 @@ def playerInvincible():
         for z in zombieList:
             z.damage = 0
 
-        if elapsed-startTime > 5000:
+        if elapsed-startTime > 30000:
             
             for z in zombieList:
                 z.damage = zombieLevelDamage[player.level]
@@ -821,7 +821,7 @@ elapsed = 0
 
 missedShots = 0
 
-currentHealth = 400
+currentHealth = 500
 
 # sounds
 pewSound = pygame.mixer.Sound("classicShot.wav")
@@ -923,7 +923,7 @@ while inPlay:
         if not inShop:
 
             # shoots gun on left click
-            if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0  and event.button == 1: 
+            if event.type == pygame.MOUSEBUTTONDOWN and bulletsLeft != 0: # and event.button == 1: 
                 
                 missedShots += 1
                 #print(missedShots)
@@ -986,8 +986,8 @@ while inPlay:
 
                     if player.money - 500 >= 0:
 
-                        if player.hp + 50 > 500:
-                            player.hp = 500
+                        if player.hp + 50 > currentHealth:
+                            player.hp = currentHealth
 
                         else:
                             player.hp += 75
@@ -1011,14 +1011,14 @@ while inPlay:
 
                 if itemPressed == "medkit":
                     if player.money - 4000 >= 0:
-                        player.hp = 500
+                        player.hp = currentHealth
 
                         player.money -= 4000
 
                 if itemPressed == "bullet speed":
         
                     if player.money - 10000 >= 0:
-                        bulletSpeed *= 2
+                        bulletSpeed += 4
                         player.money -= 10000
 
                 if itemPressed == "double damage":
@@ -1029,7 +1029,7 @@ while inPlay:
 
                 if itemPressed == "add health":
                     if player.money - 8000 >= 0:
-                        currentHealth += 100
+                        currentHealth += 200
 
                         player.money -= 8000
 
@@ -1042,11 +1042,13 @@ while inPlay:
                     inShop2 = False
         itemPressed = ""
         gunPressed = ""  
+
+    print(player.hp, currentHealth)
     #------------------------------------------------#
     if player.hp <= 0:
         gameEnd = "lose"
 
-    if player.level == 20:
+    if player.level == 19:
         gameEnd = "win"
 
     if missedShots >= 7:
